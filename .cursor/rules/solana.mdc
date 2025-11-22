@@ -1,0 +1,32 @@
+# Solana開発ルール
+
+## アカウントモデル
+- アカウントはデータを格納するストレージ
+- プログラムは実行ロジックのみ
+- Cross-Program Invocation (CPI)でプログラム間連携
+
+## トランザクション
+- 最大サイズ: 1232 bytes
+- Compute Budget: 200,000 CU (デフォルト)
+- 署名者数は最大16
+
+## PDA (Program Derived Address)
+- プログラム所有のアドレス
+- `find_program_address()` で派生
+- `create_program_address()` で検証
+
+## Rent
+- アカウントはrentを支払う必要あり
+- rent-exempt: 2年間分のrentを一括前払い
+- rent-exempt minimum: `getMinimumBalanceForRentExemption()`
+
+## ネットワーク
+- mainnet-beta: 本番環境
+- devnet: 開発テスト環境
+- testnet: バリデーター開発環境
+- localnet: ローカル開発環境
+
+## トークン標準
+- SPL Token: トークン標準
+- Associated Token Account: ユーザーごとのトークンアカウント
+- Token Metadata: NFT/トークンのメタデータ

@@ -1,0 +1,25 @@
+# Anchor開発ルール
+
+## プログラム構造
+- `declare_id!()` マクロでプログラムIDを宣言
+- `#[program]` 属性でプログラムモジュールを定義
+- 各instructionは `pub fn` で定義
+
+## アカウント構造
+- `#[derive(Accounts)]` でアカウント構造体を定義
+- 必須アカウントには `#[account(mut)]` を付与
+- PDA派生には `seeds` と `bump` を使用
+
+## エラーハンドリング
+- `Result<()>` を戻り値型として使用
+- エラーは `error!()` マクロで定義
+- `require!()` マクロで条件チェック
+
+## セキュリティ
+- 所有権チェックを必ず実施
+- signer権限の検証
+- PDAの正しい派生
+
+## IDL生成
+- `anchor build` でIDLを自動生成
+- TypeScriptクライアントコードも同時に生成

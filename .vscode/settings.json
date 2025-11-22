@@ -1,0 +1,107 @@
+{
+  // Rust settings
+  "rust-analyzer.checkOnSave.command": "clippy",
+  "rust-analyzer.check.command": "clippy",
+  "rust-analyzer.cargo.features": "all",
+  "rust-analyzer.procMacro.enable": true,
+  "rust-analyzer.cargo.buildScripts.enable": true,
+  "rust-analyzer.lens.enable": true,
+  "rust-analyzer.lens.references.adt.enable": true,
+  "rust-analyzer.lens.references.enumVariant.enable": true,
+  "rust-analyzer.completion.postfix.enable": true,
+  "rust-analyzer.completion.autoimport.enable": true,
+  "rust-analyzer.hover.actions.references.enable": true,
+  "rust-analyzer.hover.actions.implementations.enable": true,
+  "rust-analyzer.hover.actions.run.enable": true,
+  "rust-analyzer.hover.actions.debug.enable": true,
+  "rust-analyzer.inlayHints.enable": true,
+  "rust-analyzer.inlayHints.typeHints.enable": true,
+  "rust-analyzer.inlayHints.parameterHints.enable": true,
+  "rust-analyzer.inlayHints.chainingHints.enable": true,
+  "rust-analyzer.inlayHints.closingBraceHints.enable": true,
+  "rust-analyzer.diagnostics.enable": true,
+  "rust-analyzer.diagnostics.experimental.enable": true,
+
+  // Editor settings
+  "editor.formatOnSave": true,
+  "editor.formatOnPaste": true,
+  "editor.formatOnType": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit",
+    "source.organizeImports": "explicit"
+  },
+  "editor.defaultFormatter": "rust-lang.rust-analyzer",
+  "[rust]": {
+    "editor.defaultFormatter": "rust-lang.rust-analyzer"
+  },
+  "[toml]": {
+    "editor.defaultFormatter": "tamasfe.even-better-toml"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+
+  // File associations
+  "files.associations": {
+    "Anchor.toml": "toml",
+    "*.rs": "rust"
+  },
+
+  // Search settings
+  "search.exclude": {
+    "**/target": true,
+    "**/node_modules": true,
+    "**/.anchor": true,
+    "**/test-ledger": true
+  },
+
+  // Terminal settings
+  "terminal.integrated.env.linux": {
+    "PATH": "${env:PATH}:/home/${env:USER}/.local/share/solana/install/active_release/bin:/home/${env:USER}/.cargo/bin"
+  },
+  "terminal.integrated.env.osx": {
+    "PATH": "${env:PATH}:/Users/${env:USER}/.local/share/solana/install/active_release/bin:/Users/${env:USER}/.cargo/bin"
+  },
+  "terminal.integrated.env.windows": {
+    "PATH": "${env:PATH};C:\\Users\\${env:USERNAME}\\.local\\share\\solana\\install\\active_release\\bin;%USERPROFILE%\\.cargo\\bin"
+  },
+
+  // Anchor specific settings
+  "anchor.idl.build": true,
+  "anchor.test.validator_startup_timeout": 30000,
+
+  // Git settings
+  "git.autofetch": true,
+  "git.confirmSync": false,
+
+  // Workspace settings
+  "workspace.retainUndoHistory": true,
+
+  // Prettier settings (for JS/TS files if any)
+  "prettier.configPath": ".prettierrc",
+
+  // Files to exclude from workspace
+  "files.exclude": {
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/target": true,
+    "**/node_modules": true,
+    "**/.anchor": true,
+    "**/test-ledger": true,
+    "**/.yarn": true
+  },
+
+  // Emmet settings (if needed for HTML/JSX)
+  "emmet.includeLanguages": {
+    "rust": "html"
+  }
+}

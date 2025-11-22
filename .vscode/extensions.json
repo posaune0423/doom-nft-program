@@ -1,0 +1,12 @@
+{
+  "recommendations": [
+    // Rust development
+    "tamasfe.even-better-toml",
+
+    // Anchor/Solana development
+    "anchor-labs.anchor-ide",
+
+    // General development
+    "esbenp.prettier-vscode",
+  ],
+}
