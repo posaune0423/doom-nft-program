@@ -1,0 +1,15 @@
+target
+node_modules
+.anchor
+test-ledger
+dist
+coverage
+bun.lock
+Cargo.lock
+.vscode
+.cursor
+.claude
+.codex
+AGENTS.md
+CLAUDE.md
+*.md

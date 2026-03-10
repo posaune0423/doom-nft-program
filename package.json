@@ -2,23 +2,32 @@
   "name": "doom-nft-program",
   "version": "1.0.0",
   "description": "Doom NFT Program",
+  "packageManager": "bun@1.3.10",
   "scripts": {
-    "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
-    "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
-    "format": "prettier */*.js \"*/**/*{.js,.ts}\" -w"
+    "prepare": "lefthook install",
+    "format": "bun run format:rust && bun run format:ts",
+    "format:check": "bun run format:rust:check && bun run format:ts:check",
+    "format:rust": "cargo fmt --all",
+    "format:rust:check": "cargo fmt --all --check",
+    "format:ts": "prettier . --write --ignore-unknown",
+    "format:ts:check": "prettier . --check --ignore-unknown",
+    "lint": "cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "test": "cargo test --workspace",
+    "check": "bun run format:check && bun run lint && bun run test"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.1"
   },
   "devDependencies": {
-    "chai": "^4.3.4",
-    "mocha": "^9.0.3",
-    "ts-mocha": "^10.0.0",
     "@types/bn.js": "^5.1.0",
     "@types/chai": "^4.3.0",
     "@types/mocha": "^9.0.0",
-    "typescript": "^5.7.3",
-    "prettier": "^2.6.2"
+    "chai": "^4.3.4",
+    "lefthook": "2.1.3",
+    "mocha": "^9.0.3",
+    "prettier": "3.8.1",
+    "ts-mocha": "^10.0.0",
+    "typescript": "^5.7.3"
   },
   "prettier": {
     "semi": true,

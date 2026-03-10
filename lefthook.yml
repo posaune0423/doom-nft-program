@@ -1,0 +1,13 @@
+pre-commit:
+  commands:
+    rustfmt:
+      run: cargo fmt --all --check
+    clippy:
+      run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+    prettier:
+      run: bun run format:ts:check
+
+pre-push:
+  commands:
+    test:
+      run: cargo test --workspace
