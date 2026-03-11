@@ -1,8 +1,19 @@
+#![allow(deprecated)]
+
+pub mod constants;
+pub mod error;
+pub mod events;
+pub mod instructions;
+pub mod state;
+pub mod utils;
+
 use anchor_lang::prelude::*;
-use anchor_spl::{
-    associated_token::AssociatedToken,
-    token::{self, Mint, Token, TokenAccount, Transfer},
-};
+
+pub use constants::*;
+pub use error::*;
+pub use events::*;
+pub use instructions::*;
+pub use state::*;
 
 declare_id!("AavECgzCbVhHeBGAfcUgT1tYEC4N4B96E8XtF9H1fMGt");
 
@@ -10,134 +21,55 @@ declare_id!("AavECgzCbVhHeBGAfcUgT1tYEC4N4B96E8XtF9H1fMGt");
 pub mod doom_nft_program {
     use super::*;
 
-    pub fn create_mint(ctx: Context<CreateMint>) -> Result<()> {
-        msg!("Creating NFT mint: {}", ctx.accounts.mint.key());
-        Ok(())
+    pub fn initialize_global_config(
+        ctx: Context<InitializeGlobalConfig>,
+        base_metadata_url: String,
+        upgrade_authority: Pubkey,
+    ) -> Result<()> {
+        instructions::initialize_global_config::process_initialize_global_config(
+            ctx,
+            base_metadata_url,
+            upgrade_authority,
+        )
     }
 
-    pub fn mint_token(ctx: Context<MintToken>) -> Result<()> {
-        msg!("Minting NFT token to: {}", ctx.accounts.token_account.key());
-
-        // Mint exactly 1 token (NFT)
-        token::mint_to(
-            CpiContext::new(
-                ctx.accounts.token_program.to_account_info(),
-                token::MintTo {
-                    mint: ctx.accounts.mint.to_account_info(),
-                    to: ctx.accounts.token_account.to_account_info(),
-                    authority: ctx.accounts.mint_authority.to_account_info(),
-                },
-            ),
-            1, // NFTなので1個のみ
-        )?;
-
-        msg!("NFT token minted successfully!");
-        Ok(())
+    pub fn initialize_collection(ctx: Context<InitializeCollection>) -> Result<()> {
+        instructions::initialize_collection::process_initialize_collection(ctx)
     }
 
-    pub fn transfer_token(ctx: Context<TransferToken>) -> Result<()> {
-        msg!(
-            "Transferring NFT from {} to {}",
-            ctx.accounts.from.key(),
-            ctx.accounts.to.key()
-        );
-
-        // Transfer exactly 1 token (NFT)
-        token::transfer(
-            CpiContext::new(
-                ctx.accounts.token_program.to_account_info(),
-                Transfer {
-                    from: ctx.accounts.from_token_account.to_account_info(),
-                    to: ctx.accounts.to_token_account.to_account_info(),
-                    authority: ctx.accounts.from.to_account_info(),
-                },
-            ),
-            1, // NFTなので1個
-        )?;
-
-        msg!("NFT transferred successfully!");
-        Ok(())
+    pub fn reserve_token_id(ctx: Context<ReserveTokenId>) -> Result<()> {
+        instructions::reserve_token_id::process_reserve_token_id(ctx)
     }
-}
 
-#[derive(Accounts)]
-pub struct CreateMint<'info> {
-    #[account(
-        init,
-        payer = payer,
-        mint::decimals = 0, // NFTなので小数点以下なし
-        mint::authority = mint_authority,
-        mint::freeze_authority = mint_authority,
-    )]
-    pub mint: Account<'info, Mint>,
+    pub fn mint_doom_index_nft(ctx: Context<MintDoomIndexNft>, token_id: u64) -> Result<()> {
+        instructions::mint_doom_index_nft::process_mint_doom_index_nft(ctx, token_id)
+    }
 
-    #[account(mut)]
-    pub payer: Signer<'info>,
+    pub fn update_base_metadata_url(
+        ctx: Context<UpdateBaseMetadataUrl>,
+        base_metadata_url: String,
+    ) -> Result<()> {
+        instructions::update_base_metadata_url::process_update_base_metadata_url(
+            ctx,
+            base_metadata_url,
+        )
+    }
 
-    /// CHECK: The mint authority
-    pub mint_authority: Signer<'info>,
+    pub fn set_mint_paused(ctx: Context<SetMintPaused>, paused: bool) -> Result<()> {
+        instructions::set_mint_paused::process_set_mint_paused(ctx, paused)
+    }
 
-    pub token_program: Program<'info, Token>,
-    pub system_program: Program<'info, System>,
-    pub rent: Sysvar<'info, Rent>,
-}
+    pub fn transfer_admin(ctx: Context<TransferAdmin>, new_admin: Pubkey) -> Result<()> {
+        instructions::transfer_admin::process_transfer_admin(ctx, new_admin)
+    }
 
-#[derive(Accounts)]
-pub struct MintToken<'info> {
-    #[account(
-        mut,
-        mint::authority = mint_authority,
-        mint::freeze_authority = mint_authority,
-    )]
-    pub mint: Account<'info, Mint>,
-
-    #[account(
-        init,
-        payer = payer,
-        associated_token::mint = mint,
-        associated_token::authority = recipient,
-    )]
-    pub token_account: Account<'info, TokenAccount>,
-
-    #[account(mut)]
-    pub payer: Signer<'info>,
-
-    /// CHECK: The mint authority
-    pub mint_authority: Signer<'info>,
-
-    /// CHECK: The recipient of the NFT
-    pub recipient: AccountInfo<'info>,
-
-    pub token_program: Program<'info, Token>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
-    pub system_program: Program<'info, System>,
-    pub rent: Sysvar<'info, Rent>,
-}
-
-#[derive(Accounts)]
-pub struct TransferToken<'info> {
-    #[account(mut)]
-    pub mint: Account<'info, Mint>,
-
-    #[account(
-        mut,
-        associated_token::mint = mint,
-        associated_token::authority = from,
-    )]
-    pub from_token_account: Account<'info, TokenAccount>,
-
-    #[account(
-        mut,
-        associated_token::mint = mint,
-        associated_token::authority = to,
-    )]
-    pub to_token_account: Account<'info, TokenAccount>,
-
-    #[account(mut)]
-    pub from: Signer<'info>,
-
-    /// CHECK: The recipient of the NFT
-    pub to: AccountInfo<'info>,
-
-    pub token_program: Program<'info, Token>,
+    pub fn set_upgrade_authority(
+        ctx: Context<SetUpgradeAuthority>,
+        new_upgrade_authority: Pubkey,
+    ) -> Result<()> {
+        instructions::set_upgrade_authority::process_set_upgrade_authority(
+            ctx,
+            new_upgrade_authority,
+        )
+    }
 }
