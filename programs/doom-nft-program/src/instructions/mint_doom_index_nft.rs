@@ -43,7 +43,7 @@ pub struct MintDoomIndexNft<'info> {
     /// CHECK: Existing Core collection account. Address checked against config.
     #[account(
         mut,
-        address = global_config.collection @ DoomNftProgramError::CollectionNotInitialized
+        address = global_config.collection @ DoomNftProgramError::CollectionMismatch
     )]
     pub collection: UncheckedAccount<'info>,
 

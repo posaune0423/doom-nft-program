@@ -51,6 +51,13 @@ export type GlobalConfigAccount = {
   bump: number;
 };
 
+type ReserveTokenIdOptions = {
+  fetchGlobalConfig?: typeof fetchGlobalConfig;
+  sendInstructions?: typeof sendInstructions;
+  maxAttempts?: number;
+  backoffMs?: number;
+};
+
 export function getConnection(): web3.Connection {
   return new Connection(process.env.ANCHOR_PROVIDER_URL ?? "https://api.devnet.solana.com", "confirmed");
 }
@@ -71,14 +78,30 @@ export function loadKeypair(filePath: string): web3.Keypair {
 
 export function loadOrCreateKeypair(filePath: string): web3.Keypair {
   const absolutePath = resolve(filePath);
-  if (existsSync(absolutePath)) {
+  try {
     return loadKeypair(absolutePath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw error;
+    }
   }
 
   mkdirSync(dirname(absolutePath), { recursive: true });
   const keypair = Keypair.generate();
-  writeFileSync(absolutePath, JSON.stringify(Array.from(keypair.secretKey)), "utf8");
-  return keypair;
+  try {
+    writeFileSync(absolutePath, JSON.stringify(Array.from(keypair.secretKey)), {
+      encoding: "utf8",
+      flag: "wx",
+      mode: 0o600,
+    });
+    return keypair;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "EEXIST") {
+      return loadKeypair(absolutePath);
+    }
+
+    throw error;
+  }
 }
 
 export function writeJson(filePath: string, payload: unknown): void {
@@ -209,34 +232,53 @@ export async function reserveTokenId(
   connection: web3.Connection,
   payer: web3.Keypair,
   programId: web3.PublicKey = DEFAULT_PROGRAM_ID,
+  options: ReserveTokenIdOptions = {},
 ): Promise<{
   signature: string;
   tokenId: bigint;
   reservation: web3.PublicKey;
   globalConfig: GlobalConfigAccount;
 }> {
-  const before = await fetchGlobalConfig(connection, programId);
-  const tokenId = BigInt(before.nextTokenId.toString());
-  const [globalConfig] = globalConfigPda(programId);
-  const [reservation] = reservationPda(tokenId, programId);
+  const fetchGlobalConfigImpl = options.fetchGlobalConfig ?? fetchGlobalConfig;
+  const sendInstructionsImpl = options.sendInstructions ?? sendInstructions;
+  const maxAttempts = options.maxAttempts ?? 4;
+  const backoffMs = options.backoffMs ?? 200;
 
-  const instruction = createInstruction(
-    "reserve_token_id",
-    borsh.struct([]),
-    {},
-    [
-      { pubkey: globalConfig, isSigner: false, isWritable: true },
-      { pubkey: reservation, isSigner: false, isWritable: true },
-      { pubkey: payer.publicKey, isSigner: true, isWritable: true },
-      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-    ],
-    programId,
-  );
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const before = await fetchGlobalConfigImpl(connection, programId);
+    const tokenId = BigInt(before.nextTokenId.toString());
+    const [globalConfig] = globalConfigPda(programId);
+    const [reservation] = reservationPda(tokenId, programId);
 
-  const signature = await sendInstructions(connection, payer, [instruction]);
-  const after = await fetchGlobalConfig(connection, programId);
+    const instruction = createInstruction(
+      "reserve_token_id",
+      borsh.struct([]),
+      {},
+      [
+        { pubkey: globalConfig, isSigner: false, isWritable: true },
+        { pubkey: reservation, isSigner: false, isWritable: true },
+        { pubkey: payer.publicKey, isSigner: true, isWritable: true },
+        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      ],
+      programId,
+    );
 
-  return { signature, tokenId, reservation, globalConfig: after };
+    try {
+      const signature = await sendInstructionsImpl(connection, payer, [instruction]);
+      const after = await fetchGlobalConfigImpl(connection, programId);
+      return { signature, tokenId, reservation, globalConfig: after };
+    } catch (error) {
+      if (attempt === maxAttempts || !isReservationContentionError(error)) {
+        throw error;
+      }
+
+      if (backoffMs > 0) {
+        await sleep(backoffMs);
+      }
+    }
+  }
+
+  throw new Error("reserveTokenId exhausted retries without a terminal error");
 }
 
 export function mintDoomIndexNftInstruction(
@@ -270,6 +312,24 @@ export function mintDoomIndexNftInstruction(
 
 function instructionDiscriminator(name: string): Buffer {
   return createHash("sha256").update(`global:${name}`).digest().subarray(0, 8);
+}
+
+function isReservationContentionError(error: unknown): boolean {
+  const text = [
+    error instanceof Error ? error.message : "",
+    error instanceof Error ? error.toString() : String(error),
+    typeof error === "object" && error !== null && "logs" in error && Array.isArray((error as { logs?: unknown }).logs)
+      ? ((error as { logs: string[] }).logs ?? []).join("\n")
+      : "",
+  ]
+    .join("\n")
+    .toLowerCase();
+
+  return text.includes("already in use");
+}
+
+async function sleep(milliseconds: number): Promise<void> {
+  await new Promise((resolvePromise) => setTimeout(resolvePromise, milliseconds));
 }
 
 function accountDiscriminator(name: string): Buffer {

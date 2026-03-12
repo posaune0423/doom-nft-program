@@ -15,6 +15,23 @@ async function main(): Promise<void> {
   if (!baseMetadataUrl) {
     throw new Error("BASE_METADATA_URL is required");
   }
+  if (baseMetadataUrl.trim() !== baseMetadataUrl) {
+    throw new Error("BASE_METADATA_URL must not contain leading or trailing whitespace");
+  }
+  if (!baseMetadataUrl.startsWith("https://")) {
+    throw new Error("BASE_METADATA_URL must use https");
+  }
+  try {
+    new URL(baseMetadataUrl);
+  } catch {
+    throw new Error("BASE_METADATA_URL must be a valid URL");
+  }
+  if (baseMetadataUrl.endsWith("/")) {
+    throw new Error("BASE_METADATA_URL must not end with a trailing slash");
+  }
+  if (Buffer.byteLength(baseMetadataUrl, "utf8") > 256) {
+    throw new Error("BASE_METADATA_URL must be 256 bytes or fewer");
+  }
 
   const connection = getConnection();
   const payer = loadWallet();

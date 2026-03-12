@@ -220,3 +220,24 @@
 - Added `tests/fixtures/mpl_core_program.so` and `tests/fixtures/mpl_core_program.so.sha256`, pinned to the official Metaplex Core release asset `release/core@0.9.10` with SHA-256 `604d401ea0c6c7b530c42274deeb903c953c1ef930bc5468497f60f3128493cc`.
 - Updated `README.md` and `tests/fixtures/README.md` so the contract-test fixture workflow and provenance match the implementation.
 - Verified with `bun test scripts/devnet/common.test.ts`, `bun x tsc --noEmit`, `bun run format:check`, `bun run lint`, and `bun run test:contract`.
+
+# Task Plan: Verify And Fix Review Findings (2026-03-12)
+
+- [x] Verify each reported finding against the current codebase and skip any already-fixed items.
+- [x] Add or extend tests first for the confirmed behavior gaps in Rust and TypeScript helpers.
+- [x] Implement the minimum code changes needed in the program, scripts, and package tooling.
+- [x] Run focused and full verification commands.
+- [x] Record which findings were fixed versus already resolved in the review section.
+
+# Review: Verify And Fix Review Findings (2026-03-12)
+
+- Added an explicit `typecheck` script and wired it into `check`, with `tsconfig.json` scoped to `scripts/**/*.ts` so the devnet scripts are covered by `tsc --noEmit`.
+- Tightened program-side authority handling by requiring `transfer_admin` to be co-signed by the current `admin`, the current `upgrade_authority`, and the `new_admin` signer, which gives `GlobalConfig.upgrade_authority` a real privilege gate instead of leaving it unused.
+- Removed the crate-wide deprecated lint suppression and replaced it with a wrapper module that localizes the Anchor 0.31 `#[program]` macro deprecation allowance while keeping `clippy -D warnings` green.
+- Hardened `validate_base_metadata_url` to reject whitespace, non-HTTPS URLs, trailing slashes, and values over 256 bytes; aligned `scripts/devnet/init.ts` with the same constraints.
+- Replaced the hard-coded asset name literal with `COLLECTION_NAME` and introduced `CollectionMismatch` so collection-address failures are reported accurately.
+- Made `loadOrCreateKeypair` atomic with exclusive create mode `0o600`, added reserve retry logic on reservation contention, and fixed `scripts/test-contract-v1.sh` to run from `ROOT_DIR`.
+- Updated `scripts/devnet/mint.ts` to decode the URI from the minted on-chain Metaplex Core asset account and to fall back from `HEAD` to `GET` when validating `image` and `animation_url`.
+- Extended Rust and TypeScript coverage for reservation misuse, paused minting, transfer-admin handshakes, keypair permissions, reserve retries, on-chain URI decoding, and HEAD-to-GET asset validation.
+- Verified and intentionally skipped two stale comments because the current code already addressed them: `scripts/build-test-sbf.sh` no longer reuses a dumped `mpl_core_program.so`, and the redundant `let config = global_config;` alias in `tests/src/lib.rs` was already gone after the earlier test-module split.
+- Verified with `bun test scripts/devnet/common.test.ts scripts/devnet/mint.test.ts`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, `bun run check`, and the `bun run check` path’s `./scripts/test-contract-v1.sh` contract suite.

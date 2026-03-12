@@ -25,8 +25,8 @@ async fn transfer_admin_updates_admin_authority() {
     let next_admin = Keypair::new();
     process_instruction(
         &mut context,
-        transfer_admin_ix(payer, next_admin.pubkey()),
-        &[],
+        transfer_admin_ix(payer, upgrade_authority.pubkey(), next_admin.pubkey()),
+        &[&upgrade_authority, &next_admin],
     )
     .await
     .expect("transfer admin");

@@ -91,3 +91,105 @@ async fn mint_without_reservation_fails() {
 
     assert!(matches!(error, BanksClientError::TransactionError(_)));
 }
+
+#[tokio::test]
+async fn mint_with_other_users_reservation_fails() {
+    let mut context = start_context().await;
+    let payer = context.payer.pubkey();
+    let other_user = Keypair::new();
+    let upgrade_authority = Keypair::new();
+    process_instruction(
+        &mut context,
+        initialize_global_config_ix(
+            payer,
+            upgrade_authority.pubkey(),
+            "https://example.com/base",
+        ),
+        &[],
+    )
+    .await
+    .expect("initialize global config");
+
+    let collection = Keypair::new();
+    process_instruction(
+        &mut context,
+        initialize_collection_ix(payer, collection.pubkey()),
+        &[&collection],
+    )
+    .await
+    .expect("initialize collection");
+
+    process_instruction(&mut context, reserve_token_id_ix(payer, 1), &[])
+        .await
+        .expect("reserve token id");
+
+    process_instruction(
+        &mut context,
+        solana_sdk::system_instruction::transfer(&payer, &other_user.pubkey(), 1_000_000_000),
+        &[],
+    )
+    .await
+    .expect("fund other user");
+
+    let asset = Keypair::new();
+    let error = process_instruction(
+        &mut context,
+        mint_doom_index_nft_ix(other_user.pubkey(), 1, asset.pubkey(), collection.pubkey()),
+        &[&other_user, &asset],
+    )
+    .await
+    .expect_err("mint should fail for a different reservation owner");
+
+    assert!(matches!(error, BanksClientError::TransactionError(_)));
+}
+
+#[tokio::test]
+async fn mint_cannot_reuse_reservation_after_success() {
+    let mut context = start_context().await;
+    let payer = context.payer.pubkey();
+    let upgrade_authority = Keypair::new();
+    process_instruction(
+        &mut context,
+        initialize_global_config_ix(
+            payer,
+            upgrade_authority.pubkey(),
+            "https://example.com/base",
+        ),
+        &[],
+    )
+    .await
+    .expect("initialize global config");
+
+    let collection = Keypair::new();
+    process_instruction(
+        &mut context,
+        initialize_collection_ix(payer, collection.pubkey()),
+        &[&collection],
+    )
+    .await
+    .expect("initialize collection");
+
+    process_instruction(&mut context, reserve_token_id_ix(payer, 1), &[])
+        .await
+        .expect("reserve token id");
+
+    let first_asset = Keypair::new();
+    process_instruction(
+        &mut context,
+        mint_doom_index_nft_ix(payer, 1, first_asset.pubkey(), collection.pubkey()),
+        &[&first_asset],
+    )
+    .await
+    .expect("first mint succeeds");
+
+    let second_asset = Keypair::new();
+    let error = process_instruction(
+        &mut context,
+        mint_doom_index_nft_ix(payer, 1, second_asset.pubkey(), collection.pubkey()),
+        &[&second_asset],
+    )
+    .await
+    .expect_err("second mint should fail");
+
+    assert!(matches!(error, BanksClientError::TransactionError(_)));
+}

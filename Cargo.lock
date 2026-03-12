@@ -1469,6 +1469,7 @@ dependencies = [
  "anchor-lang",
  "mpl-core",
  "solana-program",
+ "url",
 ]
 
 [[package]]

@@ -17,8 +17,9 @@
     "devnet:init": "bun run ./scripts/devnet/init.ts",
     "devnet:reserve": "bun run ./scripts/devnet/reserve.ts",
     "devnet:mint": "bun run ./scripts/devnet/mint.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "cargo test --workspace --exclude tests && bun run test:contract",
-    "check": "bun run format:check && bun run lint && bun run test"
+    "check": "bun run format:check && bun run lint && bun run test && bun run typecheck"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.1"

@@ -8,6 +8,8 @@ pub enum DoomNftProgramError {
     MintPaused,
     #[msg("The collection has not been initialized.")]
     CollectionNotInitialized,
+    #[msg("The provided collection account does not match the configured collection.")]
+    CollectionMismatch,
     #[msg("The collection has already been initialized.")]
     CollectionAlreadyInitialized,
     #[msg("The reservation has already been used to mint an asset.")]

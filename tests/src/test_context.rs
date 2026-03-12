@@ -46,8 +46,12 @@ fn doom_nft_program_test_processor<'a, 'b, 'c, 'd>(
     accounts: &'b [AccountInfo<'c>],
     instruction_data: &'d [u8],
 ) -> ProgramResult {
-    // Anchor's generated entrypoint ties the slice lifetime to the inner AccountInfo lifetime.
-    // ProgramTest uses the looser builtin processor signature, so the wrapper narrows it for this call.
+    // SAFETY: This only narrows the outer slice lifetime from `&'b [AccountInfo<'c>]` to
+    // `&'c [AccountInfo<'c>]` without changing the slice layout or the contained `AccountInfo`
+    // values. `accounts` already points to `AccountInfo<'c>` elements, and callers uphold that
+    // the slice lives for the full duration of `doom_nft_program::entry(program_id, accounts,
+    // instruction_data)`, so this cast does not extend any inner borrow past its original
+    // lifetime.
     let accounts: &'c [AccountInfo<'c>] = unsafe { std::mem::transmute(accounts) };
     doom_nft_program::entry(program_id, accounts, instruction_data)
 }
@@ -250,15 +254,21 @@ pub fn update_base_metadata_url_ix(admin: Pubkey, base_metadata_url: &str) -> In
     }
 }
 
-pub fn transfer_admin_ix(admin: Pubkey, new_admin: Pubkey) -> Instruction {
+pub fn transfer_admin_ix(
+    admin: Pubkey,
+    upgrade_authority: Pubkey,
+    new_admin: Pubkey,
+) -> Instruction {
     Instruction {
         program_id: doom_nft_program::id(),
         accounts: TransferAdmin {
             global_config: global_config_pda().0,
             admin,
+            upgrade_authority,
+            new_admin,
         }
         .to_account_metas(None),
-        data: instruction::TransferAdmin { new_admin }.data(),
+        data: instruction::TransferAdmin {}.data(),
     }
 }
 

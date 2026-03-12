@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, test } from "node:test";
 
-import { resolveWalletPath } from "./common";
+import { BN, web3 } from "@coral-xyz/anchor";
+
+import { loadOrCreateKeypair, resolveWalletPath, reserveTokenId } from "./common";
 
 const originalAnchorWallet = process.env.ANCHOR_WALLET;
 const originalHome = process.env.HOME;
@@ -63,5 +65,65 @@ describe("resolveWalletPath", () => {
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
     }
+  });
+});
+
+describe("loadOrCreateKeypair", () => {
+  test("creates a new keypair file with owner-only permissions", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "doom-keypair-"));
+    const keypairPath = join(tempDir, "keypair.json");
+
+    try {
+      const keypair = loadOrCreateKeypair(keypairPath);
+      const storedSecret = JSON.parse(readFileSync(keypairPath, "utf8")) as number[];
+
+      assert.deepEqual(storedSecret, Array.from(keypair.secretKey));
+      assert.equal(statSync(keypairPath).mode & 0o777, 0o600);
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("reserveTokenId", () => {
+  test("retries after a reservation contention error and recomputes the reservation PDA", async () => {
+    const payer = web3.Keypair.generate();
+    const seenReservations: string[] = [];
+    let fetchCount = 0;
+    let sendCount = 0;
+
+    const result = await reserveTokenId({} as web3.Connection, payer, undefined, {
+      fetchGlobalConfig: async () => {
+        fetchCount += 1;
+        const nextTokenId = fetchCount === 1 ? new BN(1) : new BN(2);
+        return {
+          admin: payer.publicKey,
+          upgradeAuthority: payer.publicKey,
+          nextTokenId,
+          mintPaused: false,
+          baseMetadataUrl: "https://example.com/base",
+          collection: payer.publicKey,
+          collectionUpdateAuthority: payer.publicKey,
+          bump: 255,
+        };
+      },
+      sendInstructions: async (_connection, _payer, instructions) => {
+        sendCount += 1;
+        seenReservations.push(instructions[0].keys[1].pubkey.toBase58());
+        if (sendCount === 1) {
+          throw new Error("Allocate: account Address already in use");
+        }
+
+        return "retry-signature";
+      },
+      backoffMs: 0,
+    });
+
+    assert.equal(result.signature, "retry-signature");
+    assert.equal(result.tokenId.toString(), "2");
+    assert.equal(seenReservations.length, 2);
+    assert.notEqual(seenReservations[0], seenReservations[1]);
+    assert.equal(result.reservation.toBase58(), seenReservations[1]);
+    assert.equal(result.globalConfig.nextTokenId.toString(), "2");
   });
 });
